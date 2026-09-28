@@ -119,6 +119,7 @@
     background: transparent;
   }
 
+  /* word display — the actual typing area */
   .word-display {
     font-family: 'Space Mono', monospace;
     font-size: 1.35rem;
@@ -130,9 +131,12 @@
     word-break: break-word;
   }
 
+  /* per-character coloring */
   .char { position: relative; }
   .char.correct { color: var(--correct); }
   .char.wrong { color: var(--wrong); text-decoration: underline; }
+
+  /* blinking caret */
   .char.cursor::before {
     content: '';
     position: absolute;
@@ -149,6 +153,7 @@
     50% { opacity: 0; }
   }
 
+  /* hidden input that captures keystrokes */
   .input-trap {
     position: absolute;
     opacity: 0;
@@ -164,6 +169,7 @@
     font-family: 'Space Mono', monospace;
   }
 
+  /*results screen */
   .results {
     display: none;
     flex-direction: column;
@@ -288,7 +294,10 @@
   </div>
 </div>
 
+
+
 <script>
+//words in all 7 langauges
 const WORD_LISTS = {
   en: ["the","be","to","of","and","a","in","that","have","it","for","not","on","with","he","as","you","do","at","this","but","his","by","from","they","we","say","her","she","or","an","will","my","one","all","would","there","their","what","so","up","out","if","about","who","get","which","go","me","when","make","can","like","time","no","just","him","know","take","people","into","year","your","good","some","could","them","see","other","than","then","now","look","only","come","its","over","think","also","back","after","use","two","how","our","work","first","well","way","even","new","want","because","any","these","give","day","most","us","great","between","need","large","often","hand","high","place","hold","real","life","few"],
   es: ["el","la","de","que","y","a","en","un","ser","se","no","haber","por","con","su","para","como","estar","tener","le","lo","todo","pero","más","hacer","o","poder","decir","este","ir","otro","ese","si","me","ya","ver","porque","dar","cuando","él","muy","sin","vez","mucho","saber","qué","sobre","mi","alguno","mismo","yo","también","hasta","año","dos","querer","entre","así","primero","desde","grande","eso","ni","nos","llegar","pasar","tiempo","ella","uno","donde","bien","poco","deber","entonces","poner","cosa","tanto","hombre","parecer","nuestro","tan","mientras","encontrar","nuevo","después","nadie","vida","país"],
@@ -299,6 +308,7 @@ const WORD_LISTS = {
   pt: ["o","de","que","e","do","da","em","um","para","é","com","uma","os","no","se","na","por","mais","as","dos","como","mas","foi","ao","ele","das","tem","à","seu","sua","ou","ser","quando","muito","há","nos","já","está","eu","também","só","pelo","pela","até","isso","ela","entre","era","depois","sem","mesmo","aos","ter","seus","quem","nas","me","esse","eles","estão","você","tinha","foram","essa","num","nem","suas","meu","às","minha","têm","numa","pelos","elas","havia","seja","qual","será","nós","tenho","lhe","deles","essas","esses","pelas","este","dele","tu","bem","apenas","quais","nossa","quer","qualquer","grande","tempo","vida","ano","mundo","novo"]
 };
 
+//state
 let selectedDuration = 60;
 let selectedLang = 'en';
 let text = '';
@@ -312,6 +322,7 @@ let started = false;
 let finished = false;
 let spans = [];
 
+//shuffle words until theres enough to fill the screen
 function generateText() {
   const words = [];
   const list = WORD_LISTS[selectedLang];
@@ -322,6 +333,7 @@ function generateText() {
   return words.join(' ');
 }
 
+//build the span per-char dom
 function renderText() {
   const display = document.getElementById('word-display');
   display.innerHTML = '';
@@ -336,6 +348,7 @@ function renderText() {
   }
 }
 
+//wpm = correct chars / 5 / elapsed minutes
 function calcWPM() {
   if (!startTime) return 0;
   const elapsed = (Date.now() - startTime) / 1000 / 60;
@@ -346,16 +359,19 @@ function calcAcc() {
   return totalTyped > 0 ? Math.round((correctTyped / totalTyped) * 100) : 100;
 }
 
+//update the live counters above the text
 function updateLive() {
   if (!started) return;
   document.getElementById('wpm-display').textContent = calcWPM();
   document.getElementById('acc-display').textContent = calcAcc() + '%';
   if (selectedDuration === -1) {
+    //infinite mode — count up instead of down
     const elapsed = Math.round((Date.now() - startTime) / 1000);
     document.getElementById('time-display').textContent = elapsed;
   }
 }
 
+//freeze everything and show the results screen
 function endTest() {
   if (finished) return;
   finished = true;
@@ -370,6 +386,7 @@ function endTest() {
   document.getElementById('results-view').classList.add('show');
 }
 
+//arrow keys change time (left/right) and language (up/down)
 document.addEventListener('keydown', (e) => {
   if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
 
@@ -380,7 +397,6 @@ document.addEventListener('keydown', (e) => {
   const activeLang = langBtns.findIndex(b => b.classList.contains('active'));
 
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-    // left/right navigates time
     e.preventDefault();
     const dir = e.key === 'ArrowRight' ? 1 : -1;
     const next = (activeTime + dir + timeBtns.length) % timeBtns.length;
@@ -391,7 +407,6 @@ document.addEventListener('keydown', (e) => {
   }
 
   if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-    // up/down navigates language
     e.preventDefault();
     const dir = e.key === 'ArrowDown' ? 1 : -1;
     const next = (activeLang + dir + langBtns.length) % langBtns.length;
@@ -402,10 +417,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-
-
-
-
+//reset everything back to a fresh test
 function initTest() {
   text = generateText();
   charIndex = 0;
@@ -432,6 +444,7 @@ function initTest() {
 
 function restartTest() { initTest(); }
 
+//time button clicks
 document.querySelectorAll('.time-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
@@ -441,6 +454,7 @@ document.querySelectorAll('.time-btn').forEach(btn => {
   });
 });
 
+//language button clicks
 document.querySelectorAll('.lang-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
@@ -450,15 +464,18 @@ document.querySelectorAll('.lang-btn').forEach(btn => {
   });
 });
 
+//main keydown handler — drives the whole typing logic
 document.getElementById('input-trap').addEventListener('keydown', (e) => {
   if (finished) return;
 
+  //tab restarts
   if (e.key === 'Tab') {
     e.preventDefault();
     restartTest();
     return;
   }
 
+  //backspace steps back one character
   if (e.key === 'Backspace') {
     e.preventDefault();
     if (charIndex > 0) {
@@ -473,6 +490,7 @@ document.getElementById('input-trap').addEventListener('keydown', (e) => {
   if (e.key.length !== 1) return;
   e.preventDefault();
 
+  //first keypress starts the clock
   if (!started) {
     started = true;
     startTime = Date.now();
@@ -486,12 +504,14 @@ document.getElementById('input-trap').addEventListener('keydown', (e) => {
         if (timeLeft <= 0) endTest();
       }, 1000);
     } else {
+      //infinite mode just ticks the elapsed counter
       timer = setInterval(() => {
         updateLive();
       }, 1000);
     }
   }
 
+  //score the keystroke and advance the cursor
   const isCorrect = e.key === text[charIndex];
   totalTyped++;
   if (isCorrect) correctTyped++;
@@ -503,6 +523,7 @@ document.getElementById('input-trap').addEventListener('keydown', (e) => {
   if (charIndex < text.length) {
     spans[charIndex].classList.add('cursor');
   } else {
+    //ran out of text
     endTest();
     return;
   }
