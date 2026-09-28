@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>typeit</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --accent: #e94560;
+    --correct: #4ecca3;
+    --wrong: #e94560;
+    --pending: #8892b0;
+    --text: #ccd6f6;
+    --dim: #4a5568;
+    --cursor: #e94560;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *, *::before, *::after { box-sizing: inherit; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  header {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    margin-bottom: 3rem;
+    align-self: flex-start;
+    max-width: 720px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 720px;
+  }
+
+  .meta {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--dim);
+  }
+
+  .meta span { display: flex; flex-direction: column; gap: 2px; }
+  .meta strong {
+    font-size: 1.6rem;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .word-display {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.35rem;
+    line-height: 2.2;
+    color: var(--pending);
+    position: relative;
+    user-select: none;
+    letter-spacing: 0.02em;
+    word-break: break-word;
+  }
+
+  .char { position: relative; }
+  .char.correct { color: var(--correct); }
+  .char.wrong { color: var(--wrong); text-decoration: underline; }
+  .char.cursor::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10%;
+    height: 80%;
+    width: 2px;
+    background: var(--cursor);
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .input-trap {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+  }
+
+  .hint {
+    margin-top: 1rem;
+    font-size: 0.75rem;
+    color: var(--dim);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .results {
+    display: none;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .results.show { display: flex; }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--dim);
+    border: 1px solid var(--dim);
+  }
+
+  .result-cell {
+    background: var(--surface);
+    padding: 1.25rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .result-cell .label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--dim);
+  }
+
+  .result-cell .value {
+    font-family: 'Space Mono', monospace;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .result-cell .unit {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--pending);
+  }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 0.6rem 1.4rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    align-self: flex-start;
+  }
+
+  button:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .typing-area { cursor: text; }
+</style>
+</head>
+<body>
+
+<header>typeit</header>
+
+<div class="container">
+  <div id="test-view">
+    <div class="meta">
+      <span><strong id="wpm-display">—</strong> wpm</span>
+      <span><strong id="acc-display">—</strong> acc</span>
+      <span><strong id="time-display">60</strong> sec</span>
+    </div>
+
+    <div class="typing-area" onclick="document.getElementById('input-trap').focus()">
+      <div class="word-display" id="word-display"></div>
+      <input id="input-trap" class="input-trap" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    </div>
+
+    <p class="hint">click to focus · tab to restart</p>
+  </div>
+
+  <div class="results" id="results-view">
+    <div class="result-grid">
+      <div class="result-cell">
+        <span class="label">wpm</span>
+        <span class="value" id="res-wpm">0</span>
+        <span class="unit">words per minute</span>
+      </div>
+      <div class="result-cell">
+        <span class="label">accuracy</span>
+        <span class="value" id="res-acc">0</span>
+        <span class="unit">percent</span>
+      </div>
+      <div class="result-cell">
+        <span class="label">time</span>
+        <span class="value" id="res-time">60</span>
+        <span class="unit">seconds</span>
+      </div>
+    </div>
+    <button onclick="restartTest()">try again</button>
+  </div>
+</div>
+
+<script>
+const WORDS = [
+  "the", "be", "to", "of", "and", "a", "in", "that", "have", "it",
+  "for", "not", "on", "with", "he", "as", "you", "do", "at", "this",
+  "but", "his", "by", "from", "they", "we", "say", "her", "she", "or",
+  "an", "will", "my", "one", "all", "would", "there", "their", "what",
+  "so", "up", "out", "if", "about", "who", "get", "which", "go", "me",
+  "when", "make", "can", "like", "time", "no", "just", "him", "know",
+  "take", "people", "into", "year", "your", "good", "some", "could",
+  "them", "see", "other", "than", "then", "now", "look", "only", "come",
+  "its", "over", "think", "also", "back", "after", "use", "two", "how",
+  "our", "work", "first", "well", "way", "even", "new", "want", "because",
+  "any", "these", "give", "day", "most", "us", "great", "between", "need",
+  "large", "often", "hand", "high", "place", "hold", "real", "life", "few",
+  "potentially", "how", "are", "you", "here", "benzisothiazolinone", "chromosomal"
+];
+
+const DURATION = 60;
+
+let text = '';
+let charIndex = 0;
+let totalTyped = 0;
+let correctTyped = 0;
+let startTime = null;
+let timer = null;
+let timeLeft = DURATION;
+let started = false;
+let finished = false;
+let charCorrectness = [];
+
+function generateText() {
+  const pool = [...WORDS].sort(() => Math.random() - 0.5);
+  const words = [];
+  while (words.join(' ').length < 400) {
+    words.push(...pool.sort(() => Math.random() - 0.5).slice(0, 20));
+  }
+  return words.join(' ');
+}
+
+function renderText() {
+  const display = document.getElementById('word-display');
+  display.innerHTML = '';
+  for (let i = 0; i < text.length; i++) {
+    const span = document.createElement('span');
+    span.classList.add('char');
+    span.dataset.index = i;
+    span.textContent = text[i];
+    if (i === charIndex) span.classList.add('cursor');
+    display.appendChild(span);
+  }
+}
+
+function calcWPM() {
+  const elapsed = (Date.now() - startTime) / 1000 / 60;
+  return elapsed > 0 ? Math.round((correctTyped / 5) / elapsed) : 0;
+}
+
+function calcAcc() {
+  return totalTyped > 0 ? Math.min(100, Math.round((corectTyped)*100)) : 100;
+}
+
+function updateLive() {
+  if (!started) return;
+  document.getElementById('wpm-display').textContent = calcWPM();
+  document.getElementById('acc-display').textContent = calcAcc() + '%';
+}
+
+function endTest() {
+  finished = true;
+  clearInterval(timer);
+  document.getElementById('test-view').style.display = 'none';
+
+  const elapsed = DURATION - timeLeft;
+  document.getElementById('res-wpm').textContent = calcWPM();
+  document.getElementById('res-acc').textContent = calcAcc() + '%';
+  document.getElementById('res-time').textContent = elapsed + 's';
+  document.getElementById('results-view').classList.add('show');
+}
+
+function initTest() {
+  text = generateText();
+  charIndex = 0;
+  totalTyped = 0;
+  correctTyped = 0;
+  startTime = null;
+  timeLeft = DURATION;
+  started = false;
+  finished = false;
+  charCorrectness = new Array(text.length).fill(null);
+
+  clearInterval(timer);
+
+  document.getElementById('wpm-display').textContent = '—';
+  document.getElementById('acc-display').textContent = '—';
+  document.getElementById('time-display').textContent = DURATION;
+  document.getElementById('test-view').style.display = '';
+  document.getElementById('results-view').classList.remove('show');
+
+  renderText();
+  document.getElementById('input-trap').value = '';
+  document.getElementById('input-trap').focus();
+}
+
+function restartTest() { initTest(); }
+
+document.getElementById('input-trap').addEventListener('keydown', (e) => {
+  if (finished) return;
+
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    restartTest();
+    return;
+  }
+
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    if (charIndex > 0) {
+      charIndex--;
+      charCorrectness[charIndex] = null;
+      const spans = document.querySelectorAll('.char');
+      spans[charIndex + 1]?.classList.remove('cursor');
+      spans[charIndex].className = 'char cursor';
+      totalTyped = Math.max(0, totalTyped - 1);
+      updateLive();
+    }
+    return;
+  }
+
+  if (e.key.length !== 1) return;
+  e.preventDefault();
+
+  if (!started) {
+    started = true;
+    startTime = Date.now();
+    timer = setInterval(() => {
+      timeLeft--;
+      document.getElementById('time-display').textContent = timeLeft;
+      updateLive();
+      if (timeLeft <= 0) endTest();
+    }, 1000);
+  }
+
+  const isCorrect = e.key === text[charIndex];
+  charCorrectness[charIndex] = isCorrect;
+  totalTyped++;
+  if (isCorrect) correctTyped++;
+
+  const spans = document.querySelectorAll('.char');
+  spans[charIndex].classList.remove('cursor');
+  spans[charIndex].classList.add(isCorrect ? 'correct' : 'wrong');
+  charIndex++;
+
+  if (charIndex < text.length) {
+    spans[charIndex].classList.add('cursor');
+  } else {
+    endTest();
+    return;
+  }
+
+  updateLive();
+});
+
+initTest();
+</script>
+</body>
+</html>
