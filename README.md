@@ -1,2 +1,2 @@
 # typeit
-a simple web based typing test
+a simple web based typing test made with HTML
