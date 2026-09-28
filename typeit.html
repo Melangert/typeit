@@ -41,7 +41,6 @@
     color: var(--accent);
     letter-spacing: 0.05em;
     margin-bottom: 3rem;
-    align-self: flex-start;
     max-width: 720px;
     width: 100%;
     margin-left: auto;
@@ -53,10 +52,18 @@
     max-width: 720px;
   }
 
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
   .meta {
     display: flex;
     gap: 2rem;
-    margin-bottom: 1.5rem;
     font-family: 'Space Mono', monospace;
     font-size: 0.8rem;
     color: var(--dim);
@@ -67,6 +74,49 @@
     font-size: 1.6rem;
     color: var(--accent);
     font-weight: 700;
+  }
+
+  .selectors {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    align-items: flex-end;
+  }
+
+  .time-selector, .lang-selector {
+    display: flex;
+    gap: 0.4rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+  }
+
+  .time-btn, .lang-btn {
+    background: transparent;
+    border: 1px solid var(--dim);
+    color: var(--dim);
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+  }
+
+  .time-btn:hover, .lang-btn:hover {
+    border-color: var(--pending);
+    color: var(--pending);
+    background: transparent;
+  }
+
+  .time-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: transparent;
+  }
+
+  .lang-btn.active {
+    border-color: var(--correct);
+    color: var(--correct);
+    background: transparent;
   }
 
   .word-display {
@@ -183,10 +233,29 @@
 
 <div class="container">
   <div id="test-view">
-    <div class="meta">
-      <span><strong id="wpm-display">—</strong> wpm</span>
-      <span><strong id="acc-display">—</strong> acc</span>
-      <span><strong id="time-display">60</strong> sec</span>
+    <div class="top-bar">
+      <div class="meta">
+        <span><strong id="wpm-display">—</strong> wpm</span>
+        <span><strong id="acc-display">—</strong> acc</span>
+        <span><strong id="time-display">—</strong> sec</span>
+      </div>
+      <div class="selectors">
+        <div class="lang-selector">
+          <button class="lang-btn active" data-lang="en">en</button>
+          <button class="lang-btn" data-lang="es">es</button>
+          <button class="lang-btn" data-lang="fr">fr</button>
+          <button class="lang-btn" data-lang="de">de</button>
+          <button class="lang-btn" data-lang="ja">ja</button>
+          <button class="lang-btn" data-lang="it">it</button>
+          <button class="lang-btn" data-lang="pt">pt</button>
+        </div>
+        <div class="time-selector">
+          <button class="time-btn" data-seconds="30">30s</button>
+          <button class="time-btn active" data-seconds="60">1m</button>
+          <button class="time-btn" data-seconds="300">5m</button>
+          <button class="time-btn" data-seconds="-1">∞</button>
+        </div>
+      </div>
     </div>
 
     <div class="typing-area" onclick="document.getElementById('input-trap').focus()">
@@ -194,7 +263,7 @@
       <input id="input-trap" class="input-trap" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     </div>
 
-    <p class="hint">click to focus · tab to restart</p>
+    <p class="hint">tab to restart</p>
   </div>
 
   <div class="results" id="results-view">
@@ -211,7 +280,7 @@
       </div>
       <div class="result-cell">
         <span class="label">time</span>
-        <span class="value" id="res-time">60</span>
+        <span class="value" id="res-time">—</span>
         <span class="unit">seconds</span>
       </div>
     </div>
@@ -220,40 +289,35 @@
 </div>
 
 <script>
-const WORDS = [
-  "the", "be", "to", "of", "and", "a", "in", "that", "have", "it",
-  "for", "not", "on", "with", "he", "as", "you", "do", "at", "this",
-  "but", "his", "by", "from", "they", "we", "say", "her", "she", "or",
-  "an", "will", "my", "one", "all", "would", "there", "their", "what",
-  "so", "up", "out", "if", "about", "who", "get", "which", "go", "me",
-  "when", "make", "can", "like", "time", "no", "just", "him", "know",
-  "take", "people", "into", "year", "your", "good", "some", "could",
-  "them", "see", "other", "than", "then", "now", "look", "only", "come",
-  "its", "over", "think", "also", "back", "after", "use", "two", "how",
-  "our", "work", "first", "well", "way", "even", "new", "want", "because",
-  "any", "these", "give", "day", "most", "us", "great", "between", "need",
-  "large", "often", "hand", "high", "place", "hold", "real", "life", "few",
-  "potentially", "how", "are", "you", "here", "benzisothiazolinone", "chromosomal"
-];
+const WORD_LISTS = {
+  en: ["the","be","to","of","and","a","in","that","have","it","for","not","on","with","he","as","you","do","at","this","but","his","by","from","they","we","say","her","she","or","an","will","my","one","all","would","there","their","what","so","up","out","if","about","who","get","which","go","me","when","make","can","like","time","no","just","him","know","take","people","into","year","your","good","some","could","them","see","other","than","then","now","look","only","come","its","over","think","also","back","after","use","two","how","our","work","first","well","way","even","new","want","because","any","these","give","day","most","us","great","between","need","large","often","hand","high","place","hold","real","life","few"],
+  es: ["el","la","de","que","y","a","en","un","ser","se","no","haber","por","con","su","para","como","estar","tener","le","lo","todo","pero","más","hacer","o","poder","decir","este","ir","otro","ese","si","me","ya","ver","porque","dar","cuando","él","muy","sin","vez","mucho","saber","qué","sobre","mi","alguno","mismo","yo","también","hasta","año","dos","querer","entre","así","primero","desde","grande","eso","ni","nos","llegar","pasar","tiempo","ella","uno","donde","bien","poco","deber","entonces","poner","cosa","tanto","hombre","parecer","nuestro","tan","mientras","encontrar","nuevo","después","nadie","vida","país"],
+  fr: ["le","de","un","être","et","à","il","avoir","ne","je","son","que","se","qui","ce","dans","en","du","elle","au","pour","pas","que","vous","par","sur","faire","plus","dire","me","on","mon","lui","nous","comme","mais","tout","y","bien","où","les","si","leur","quand","même","sans","autre","aussi","peu","ces","entre","avec","temps","grand","non","nos","deux","très","après","voir","homme","venir","prendre","vouloir","savoir","falloir","toujours","rien","chaque","fois","sous","monde","vie","nouveau","encore","cela","aller","donner","ici","car","mettre","passer","tenir","sembler","laisser","quel","pays","main","chose","jour","an"],
+  de: ["der","die","und","in","den","von","zu","das","mit","sich","des","auf","für","ist","im","dem","nicht","ein","eine","als","auch","es","an","werden","aus","er","hat","dass","sie","nach","wird","bei","noch","wie","einem","über","einen","so","zum","war","haben","nur","oder","aber","vor","zur","bis","mehr","durch","man","sein","wurde","um","anderen","schon","selbst","unser","können","gegen","ohne","alle","wenn","dann","weil","ihre","damit","Zeit","gibt","Welt","kann","nun","unter","immer","Land","Jahr","Menschen","sehr","hier","zwei","neue","macht","Arbeit","ganz","Teil","etwas","dabei","kommen","sehen","lassen","zwischen","wollen","erst","wieder"],
+  ja: ["watashi","anata","kare","kanojo","watashitachi","minna","koko","soko","asoko","nani","doko","itsu","naze","dou","hai","iie","arigatou","sumimasen","daijoubu","kawaii","sugoi","taberu","nomu","iku","kuru","miru","kiku","hanasu","yomu","kaku","suru","naru","aru","iru","omou","shiru","wakaru","tsukuru","ageru","morau","kureru","suki","kirai","ii","warui","ookii","chiisai","takai","yasui","hayai","osoi","atsui","samui","tanoshii","ureshii","kanashii","muzukashii","yasashii","atarashii","furui","shiroi","kuroi","akai","aoi","kiiroi","hitori","futari","mizu","gohan","sakana","niku","yasai","kudamono","uchi","gakkou","shigoto","tomodachi","kazoku"],
+  it: ["il","di","che","è","la","un","in","per","non","con","si","da","lo","una","su","come","ma","mi","ha","ho","sono","più","lei","lui","noi","voi","loro","questo","quello","tutto","fare","andare","vedere","sapere","potere","volere","avere","essere","dire","venire","tempo","anno","vita","uomo","donna","casa","lavoro","giorno","mano","paese","modo","parte","bene","grande","nuovo","primo","stesso","altro","ogni","solo","poi","ancora","anche","già","però","quindi","così","mentre","sempre","mai","molto","poco","tra","bello","buono","lungo","alto","basso","vero","certo","diverso","proprio","dopo","prima","quando","dove","come","perché","cosa","niente"],
+  pt: ["o","de","que","e","do","da","em","um","para","é","com","uma","os","no","se","na","por","mais","as","dos","como","mas","foi","ao","ele","das","tem","à","seu","sua","ou","ser","quando","muito","há","nos","já","está","eu","também","só","pelo","pela","até","isso","ela","entre","era","depois","sem","mesmo","aos","ter","seus","quem","nas","me","esse","eles","estão","você","tinha","foram","essa","num","nem","suas","meu","às","minha","têm","numa","pelos","elas","havia","seja","qual","será","nós","tenho","lhe","deles","essas","esses","pelas","este","dele","tu","bem","apenas","quais","nossa","quer","qualquer","grande","tempo","vida","ano","mundo","novo"]
+};
 
-const DURATION = 60;
-
+let selectedDuration = 60;
+let selectedLang = 'en';
 let text = '';
 let charIndex = 0;
 let totalTyped = 0;
 let correctTyped = 0;
 let startTime = null;
 let timer = null;
-let timeLeft = DURATION;
+let timeLeft = 0;
 let started = false;
 let finished = false;
-let charCorrectness = [];
+let spans = [];
 
 function generateText() {
-  const pool = [...WORDS].sort(() => Math.random() - 0.5);
   const words = [];
-  while (words.join(' ').length < 400) {
-    words.push(...pool.sort(() => Math.random() - 0.5).slice(0, 20));
+  const list = WORD_LISTS[selectedLang];
+  while (words.join(' ').length < 600) {
+    const shuffled = [...list].sort(() => Math.random() - 0.5);
+    words.push(...shuffled);
   }
   return words.join(' ');
 }
@@ -261,42 +325,86 @@ function generateText() {
 function renderText() {
   const display = document.getElementById('word-display');
   display.innerHTML = '';
+  spans = [];
   for (let i = 0; i < text.length; i++) {
     const span = document.createElement('span');
     span.classList.add('char');
-    span.dataset.index = i;
     span.textContent = text[i];
     if (i === charIndex) span.classList.add('cursor');
     display.appendChild(span);
+    spans.push(span);
   }
 }
 
 function calcWPM() {
+  if (!startTime) return 0;
   const elapsed = (Date.now() - startTime) / 1000 / 60;
   return elapsed > 0 ? Math.round((correctTyped / 5) / elapsed) : 0;
 }
 
 function calcAcc() {
-  return totalTyped > 0 ? Math.min(100, Math.round((corectTyped)*100)) : 100;
+  return totalTyped > 0 ? Math.round((correctTyped / totalTyped) * 100) : 100;
 }
 
 function updateLive() {
   if (!started) return;
   document.getElementById('wpm-display').textContent = calcWPM();
   document.getElementById('acc-display').textContent = calcAcc() + '%';
+  if (selectedDuration === -1) {
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    document.getElementById('time-display').textContent = elapsed;
+  }
 }
 
 function endTest() {
+  if (finished) return;
   finished = true;
   clearInterval(timer);
-  document.getElementById('test-view').style.display = 'none';
 
-  const elapsed = DURATION - timeLeft;
+  const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
+
+  document.getElementById('test-view').style.display = 'none';
   document.getElementById('res-wpm').textContent = calcWPM();
   document.getElementById('res-acc').textContent = calcAcc() + '%';
   document.getElementById('res-time').textContent = elapsed + 's';
   document.getElementById('results-view').classList.add('show');
 }
+
+document.addEventListener('keydown', (e) => {
+  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+
+  const timeBtns = [...document.querySelectorAll('.time-btn')];
+  const langBtns = [...document.querySelectorAll('.lang-btn')];
+
+  const activeTime = timeBtns.findIndex(b => b.classList.contains('active'));
+  const activeLang = langBtns.findIndex(b => b.classList.contains('active'));
+
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    // left/right navigates time
+    e.preventDefault();
+    const dir = e.key === 'ArrowRight' ? 1 : -1;
+    const next = (activeTime + dir + timeBtns.length) % timeBtns.length;
+    timeBtns.forEach(b => b.classList.remove('active'));
+    timeBtns[next].classList.add('active');
+    selectedDuration = parseInt(timeBtns[next].dataset.seconds);
+    restartTest();
+  }
+
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    // up/down navigates language
+    e.preventDefault();
+    const dir = e.key === 'ArrowDown' ? 1 : -1;
+    const next = (activeLang + dir + langBtns.length) % langBtns.length;
+    langBtns.forEach(b => b.classList.remove('active'));
+    langBtns[next].classList.add('active');
+    selectedLang = langBtns[next].dataset.lang;
+    restartTest();
+  }
+});
+
+
+
+
 
 function initTest() {
   text = generateText();
@@ -304,25 +412,43 @@ function initTest() {
   totalTyped = 0;
   correctTyped = 0;
   startTime = null;
-  timeLeft = DURATION;
+  timeLeft = selectedDuration;
   started = false;
   finished = false;
-  charCorrectness = new Array(text.length).fill(null);
 
   clearInterval(timer);
 
   document.getElementById('wpm-display').textContent = '—';
   document.getElementById('acc-display').textContent = '—';
-  document.getElementById('time-display').textContent = DURATION;
+  document.getElementById('time-display').textContent = selectedDuration === -1 ? '0' : selectedDuration;
   document.getElementById('test-view').style.display = '';
   document.getElementById('results-view').classList.remove('show');
 
   renderText();
   document.getElementById('input-trap').value = '';
   document.getElementById('input-trap').focus();
+  setTimeout(() => document.querySelector('header').scrollIntoView(), 0);
 }
 
 function restartTest() { initTest(); }
+
+document.querySelectorAll('.time-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedDuration = parseInt(btn.dataset.seconds);
+    restartTest();
+  });
+});
+
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedLang = btn.dataset.lang;
+    restartTest();
+  });
+});
 
 document.getElementById('input-trap').addEventListener('keydown', (e) => {
   if (finished) return;
@@ -337,11 +463,8 @@ document.getElementById('input-trap').addEventListener('keydown', (e) => {
     e.preventDefault();
     if (charIndex > 0) {
       charIndex--;
-      charCorrectness[charIndex] = null;
-      const spans = document.querySelectorAll('.char');
       spans[charIndex + 1]?.classList.remove('cursor');
       spans[charIndex].className = 'char cursor';
-      totalTyped = Math.max(0, totalTyped - 1);
       updateLive();
     }
     return;
@@ -353,20 +476,26 @@ document.getElementById('input-trap').addEventListener('keydown', (e) => {
   if (!started) {
     started = true;
     startTime = Date.now();
-    timer = setInterval(() => {
-      timeLeft--;
-      document.getElementById('time-display').textContent = timeLeft;
-      updateLive();
-      if (timeLeft <= 0) endTest();
-    }, 1000);
+
+    if (selectedDuration !== -1) {
+      timeLeft = selectedDuration;
+      timer = setInterval(() => {
+        timeLeft--;
+        document.getElementById('time-display').textContent = timeLeft;
+        updateLive();
+        if (timeLeft <= 0) endTest();
+      }, 1000);
+    } else {
+      timer = setInterval(() => {
+        updateLive();
+      }, 1000);
+    }
   }
 
   const isCorrect = e.key === text[charIndex];
-  charCorrectness[charIndex] = isCorrect;
   totalTyped++;
   if (isCorrect) correctTyped++;
 
-  const spans = document.querySelectorAll('.char');
   spans[charIndex].classList.remove('cursor');
   spans[charIndex].classList.add(isCorrect ? 'correct' : 'wrong');
   charIndex++;
