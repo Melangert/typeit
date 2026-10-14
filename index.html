@@ -35,9 +35,12 @@
   }
 
   /* mouse disabled while the test is running */
-  body.test-active,
-  body.test-active * {
+  html.test-active,
+  html.test-active * {
     cursor: none !important;
+  }
+  html.test-active body,
+  html.test-active body * {
     pointer-events: none;
     user-select: none;
   }
@@ -296,7 +299,7 @@
         <span class="unit">seconds</span>
       </div>
     </div>
-    <button onclick="restartTest()">try again</button>
+    <button onclick="restartTest()">try again (enter)</button>
   </div>
 </div>
 
@@ -328,25 +331,33 @@ let spans = [];
 
 //lock out mouse + tab while the test view is showing
 function isTestActive() {
-  return !finished;
+  return true; //locked on the results screen too
 }
 
 //block tab everywhere (stops focus jumping and restart)
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Tab' && isTestActive()) {
     e.preventDefault();
-    e.stopPropagation();
+    e.stopImmediatePropagation();
   }
 }, true);
 
 //block all mouse interaction in the capture phase
-['mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu', 'wheel', 'auxclick'].forEach(type => {
+['mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu', 'wheel', 'auxclick', 'pointerdown', 'pointerup', 'touchstart'].forEach(type => {
   document.addEventListener(type, (e) => {
     if (isTestActive()) {
       e.preventDefault();
       e.stopPropagation();
     }
   }, { capture: true, passive: false });
+});
+
+//enter restarts from the results screen
+document.addEventListener('keydown', (e) => {
+  if (finished && e.key === 'Enter') {
+    e.preventDefault();
+    restartTest();
+  }
 });
 
 //keep the hidden input focused so typing never gets lost
@@ -407,7 +418,6 @@ function updateLive() {
 function endTest() {
   if (finished) return;
   finished = true;
-  document.body.classList.remove('test-active');
   clearInterval(timer);
 
   const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
@@ -460,7 +470,7 @@ function initTest() {
   timeLeft = selectedDuration;
   started = false;
   finished = false;
-  document.body.classList.add('test-active');
+  document.documentElement.classList.add('test-active');
 
   clearInterval(timer);
 
