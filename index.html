@@ -34,6 +34,14 @@
     padding: 2rem;
   }
 
+  /* mouse disabled while the test is running */
+  body.test-active,
+  body.test-active * {
+    cursor: none !important;
+    pointer-events: none;
+    user-select: none;
+  }
+
   header {
     font-family: 'Space Mono', monospace;
     font-size: 1.1rem;
@@ -119,7 +127,7 @@
     background: transparent;
   }
 
-  /* word display — the actual typing area */
+  /* the actual typing area */
   .word-display {
     font-family: 'Space Mono', monospace;
     font-size: 1.35rem;
@@ -131,7 +139,7 @@
     word-break: break-word;
   }
 
-  /* per-character coloring */
+  /* per-char coloring */
   .char { position: relative; }
   .char.correct { color: var(--correct); }
   .char.wrong { color: var(--wrong); text-decoration: underline; }
@@ -153,7 +161,7 @@
     50% { opacity: 0; }
   }
 
-  /* hidden input that captures keystrokes */
+  /* hidden input that captures the keystrokes */
   .input-trap {
     position: absolute;
     opacity: 0;
@@ -169,7 +177,7 @@
     font-family: 'Space Mono', monospace;
   }
 
-  /*results screen */
+  /* result screen */
   .results {
     display: none;
     flex-direction: column;
@@ -229,8 +237,6 @@
     background: var(--accent);
     color: var(--bg);
   }
-
-  .typing-area { cursor: text; }
 </style>
 </head>
 <body>
@@ -264,12 +270,12 @@
       </div>
     </div>
 
-    <div class="typing-area" onclick="document.getElementById('input-trap').focus()">
+    <div class="typing-area">
       <div class="word-display" id="word-display"></div>
       <input id="input-trap" class="input-trap" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     </div>
 
-    <p class="hint">tab to restart</p>
+    <p class="hint">←/→ time · ↑/↓ language</p>
   </div>
 
   <div class="results" id="results-view">
@@ -294,10 +300,8 @@
   </div>
 </div>
 
-
-
 <script>
-//words in all 7 langauges
+//words in all 7 languages
 const WORD_LISTS = {
   en: ["the","be","to","of","and","a","in","that","have","it","for","not","on","with","he","as","you","do","at","this","but","his","by","from","they","we","say","her","she","or","an","will","my","one","all","would","there","their","what","so","up","out","if","about","who","get","which","go","me","when","make","can","like","time","no","just","him","know","take","people","into","year","your","good","some","could","them","see","other","than","then","now","look","only","come","its","over","think","also","back","after","use","two","how","our","work","first","well","way","even","new","want","because","any","these","give","day","most","us","great","between","need","large","often","hand","high","place","hold","real","life","few"],
   es: ["el","la","de","que","y","a","en","un","ser","se","no","haber","por","con","su","para","como","estar","tener","le","lo","todo","pero","más","hacer","o","poder","decir","este","ir","otro","ese","si","me","ya","ver","porque","dar","cuando","él","muy","sin","vez","mucho","saber","qué","sobre","mi","alguno","mismo","yo","también","hasta","año","dos","querer","entre","así","primero","desde","grande","eso","ni","nos","llegar","pasar","tiempo","ella","uno","donde","bien","poco","deber","entonces","poner","cosa","tanto","hombre","parecer","nuestro","tan","mientras","encontrar","nuevo","después","nadie","vida","país"],
@@ -313,7 +317,7 @@ let selectedDuration = 60;
 let selectedLang = 'en';
 let text = '';
 let charIndex = 0;
-let totalTyped = 0;
+let totalKeystrokes = 0; //raw presses
 let correctTyped = 0;
 let startTime = null;
 let timer = null;
@@ -321,6 +325,34 @@ let timeLeft = 0;
 let started = false;
 let finished = false;
 let spans = [];
+
+//lock out mouse + tab while the test view is showing
+function isTestActive() {
+  return !finished;
+}
+
+//block tab everywhere (stops focus jumping and restart)
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab' && isTestActive()) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true);
+
+//block all mouse interaction in the capture phase
+['mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu', 'wheel', 'auxclick'].forEach(type => {
+  document.addEventListener(type, (e) => {
+    if (isTestActive()) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, { capture: true, passive: false });
+});
+
+//keep the hidden input focused so typing never gets lost
+document.getElementById('input-trap').addEventListener('blur', () => {
+  if (isTestActive()) setTimeout(() => document.getElementById('input-trap').focus(), 0);
+});
 
 //shuffle words until theres enough to fill the screen
 function generateText() {
@@ -356,7 +388,7 @@ function calcWPM() {
 }
 
 function calcAcc() {
-  return totalTyped > 0 ? Math.round((correctTyped / totalTyped) * 100) : 100;
+  return totalKeystrokes > 0 ? Math.round((correctTyped / totalKeystrokes) * 100) : 100;
 }
 
 //update the live counters above the text
@@ -375,6 +407,7 @@ function updateLive() {
 function endTest() {
   if (finished) return;
   finished = true;
+  document.body.classList.remove('test-active');
   clearInterval(timer);
 
   const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
@@ -421,12 +454,13 @@ document.addEventListener('keydown', (e) => {
 function initTest() {
   text = generateText();
   charIndex = 0;
-  totalTyped = 0;
+  totalKeystrokes = 0;
   correctTyped = 0;
   startTime = null;
   timeLeft = selectedDuration;
   started = false;
   finished = false;
+  document.body.classList.add('test-active');
 
   clearInterval(timer);
 
@@ -468,13 +502,6 @@ document.querySelectorAll('.lang-btn').forEach(btn => {
 document.getElementById('input-trap').addEventListener('keydown', (e) => {
   if (finished) return;
 
-  //tab restarts
-  if (e.key === 'Tab') {
-    e.preventDefault();
-    restartTest();
-    return;
-  }
-
   //backspace steps back one character
   if (e.key === 'Backspace') {
     e.preventDefault();
@@ -513,7 +540,7 @@ document.getElementById('input-trap').addEventListener('keydown', (e) => {
 
   //score the keystroke and advance the cursor
   const isCorrect = e.key === text[charIndex];
-  totalTyped++;
+  totalKeystrokes++;
   if (isCorrect) correctTyped++;
 
   spans[charIndex].classList.remove('cursor');
